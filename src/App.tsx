@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { DropZone } from '@/components/DropZone';
 import { ResultViewer } from '@/components/ResultViewer';
@@ -23,8 +24,17 @@ export default function App() {
   const history = useOcrStore((s) => s.history);
   const clearHistory = useOcrStore((s) => s.clearHistory);
 
+  // Track which result row the user is hovering / clicked. ResultViewer reads
+  // this to highlight the matching bounding box; ResultPanel reads it to
+  // mark the row. Hover-only is non-sticky (mouseleave clears); click sticks.
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [pinnedIdx, setPinnedIdx] = useState<number | null>(null);
+  const focusedIdx = pinnedIdx ?? hoveredIdx;
+
   const pickFromHistory = (entry: HistoryEntry) => {
     setResult(entry.result);
+    setPinnedIdx(null);
+    setHoveredIdx(null);
   };
 
   return (
@@ -44,8 +54,15 @@ export default function App() {
               inferError={inferError}
               showOverlay={showOverlay}
               onToggleOverlay={() => setShowOverlay(!showOverlay)}
+              focusedBoxIdx={focusedIdx}
             />
-            <ResultPanel result={result} fileName={fileName} />
+            <ResultPanel
+              result={result}
+              fileName={fileName}
+              focusedIndex={focusedIdx}
+              onItemHover={setHoveredIdx}
+              onItemClick={(idx) => setPinnedIdx((cur) => (cur === idx ? null : idx))}
+            />
           </div>
         )}
 

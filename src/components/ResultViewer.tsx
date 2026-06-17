@@ -14,6 +14,7 @@ interface ResultViewerProps {
   inferError: string | null;
   showOverlay: boolean;
   onToggleOverlay: () => void;
+  focusedBoxIdx?: number | null;
 }
 
 export function ResultViewer({
@@ -25,6 +26,7 @@ export function ResultViewer({
   inferError,
   showOverlay,
   onToggleOverlay,
+  focusedBoxIdx,
 }: ResultViewerProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -49,7 +51,18 @@ export function ResultViewer({
     const padding = 32;
     const maxW = Math.max(160, wrap.clientWidth - padding);
     const maxH = Math.max(160, wrap.clientHeight - padding);
-    const fit = Math.min(maxW / natural.w, maxH / natural.h, 1);
+    // For portrait images (tall, e.g. receipts) prefer fitting to WIDTH so
+    // the image fills the column instead of shrinking to a tiny thumbnail.
+    // For landscape/square images keep fitting to both so nothing is clipped.
+    const aspect = natural.w / natural.h;
+    let fit: number;
+    if (aspect < 0.9) {
+      // Portrait: fill width, allow vertical scroll
+      fit = maxW / natural.w;
+    } else {
+      // Landscape / square: fit to both dimensions
+      fit = Math.min(maxW / natural.w, maxH / natural.h, 1);
+    }
     setRenderSize({ w: natural.w * fit, h: natural.h * fit });
     setZoom(fit);
   };
@@ -205,33 +218,36 @@ export function ResultViewer({
                 viewBox={`0 0 ${renderSize.w} ${renderSize.h}`}
                 preserveAspectRatio="none"
               >
-                {overlayBoxes.map((b) => (
-                  <g key={b.idx}>
-                    <rect
-                      x={b.x}
-                      y={b.y}
-                      width={b.w}
-                      height={b.h}
-                      fill="none"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={Math.max(1.5, 2 / zoom)}
-                      strokeDasharray="0"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <text
-                      x={b.x}
-                      y={Math.max(12, b.y - 4)}
-                      fontSize={Math.max(10, 12 / zoom)}
-                      fill="hsl(var(--primary))"
-                      stroke="hsl(var(--background))"
-                      strokeWidth={3 / zoom}
-                      paintOrder="stroke"
-                      style={{ fontFamily: 'ui-monospace, monospace' }}
-                    >
-                      {`${b.idx + 1} · ${(b.score * 100).toFixed(0)}%`}
-                    </text>
-                  </g>
-                ))}
+                {overlayBoxes.map((b) => {
+                  const focused = focusedBoxIdx === b.idx;
+                  return (
+                    <g key={b.idx}>
+                      <rect
+                        x={b.x}
+                        y={b.y}
+                        width={b.w}
+                        height={b.h}
+                        fill={focused ? 'hsl(var(--primary) / 0.18)' : 'none'}
+                        stroke={focused ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.7)'}
+                        strokeWidth={focused ? Math.max(2, 3 / zoom) : Math.max(1.5, 2 / zoom)}
+                        strokeDasharray="0"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <text
+                        x={b.x}
+                        y={Math.max(12, b.y - 4)}
+                        fontSize={Math.max(10, 12 / zoom)}
+                        fill={focused ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.85)'}
+                        stroke="hsl(var(--background))"
+                        strokeWidth={3 / zoom}
+                        paintOrder="stroke"
+                        style={{ fontFamily: 'ui-monospace, monospace', fontWeight: focused ? 700 : 500 }}
+                      >
+                        {`${b.idx + 1} · ${(b.score * 100).toFixed(0)}%`}
+                      </text>
+                    </g>
+                  );
+                })}
               </svg>
             )}
           </div>
