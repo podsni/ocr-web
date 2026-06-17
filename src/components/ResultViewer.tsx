@@ -32,30 +32,42 @@ export function ResultViewer({
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [renderSize, setRenderSize] = useState<{ w: number; h: number } | null>(null);
 
-  // Fit image to viewport on load + window resize.
-  useEffect(() => {
-    if (!imgRef.current) return;
+  // We always render an off-screen `<img>` so we can measure naturalWidth /
+  // naturalHeight the moment the blob URL changes. The wrapperRef + imgRef
+  // dance was previously buggy: the `<img>` was hidden behind a `renderSize`
+  // conditional, so on first mount imgRef.current was null, useEffect bailed,
+  // renderSize stayed null forever and the image never appeared. Rendering
+  // the img hidden off-screen breaks the cycle.
+  const fitEffect = () => {
     const img = imgRef.current;
-    const compute = () => {
-      const natural = { w: img.naturalWidth, h: img.naturalHeight };
-      if (!natural.w || !natural.h) return;
-      setImgSize(natural);
-      const wrap = wrapperRef.current;
-      if (!wrap) return;
-      const padding = 32;
-      const maxW = Math.max(160, wrap.clientWidth - padding);
-      const maxH = Math.max(160, wrap.clientHeight - padding);
-      const fit = Math.min(maxW / natural.w, maxH / natural.h, 1);
-      setRenderSize({ w: natural.w * fit, h: natural.h * fit });
-      setZoom(fit);
-    };
-    if (img.complete) compute();
-    img.addEventListener('load', compute);
-    window.addEventListener('resize', compute);
-    return () => {
-      img.removeEventListener('load', compute);
-      window.removeEventListener('resize', compute);
-    };
+    if (!img) return;
+    const natural = { w: img.naturalWidth, h: img.naturalHeight };
+    if (!natural.w || !natural.h) return;
+    setImgSize(natural);
+    const wrap = wrapperRef.current;
+    if (!wrap) return;
+    const padding = 32;
+    const maxW = Math.max(160, wrap.clientWidth - padding);
+    const maxH = Math.max(160, wrap.clientHeight - padding);
+    const fit = Math.min(maxW / natural.w, maxH / natural.h, 1);
+    setRenderSize({ w: natural.w * fit, h: natural.h * fit });
+    setZoom(fit);
+  };
+
+  // Re-fit when blobUrl changes (new image uploaded).
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    if (img.complete && img.naturalWidth > 0) {
+      fitEffect();
+    } else {
+      img.addEventListener('load', fitEffect, { once: true });
+      return () => img.removeEventListener('load', fitEffect);
+    }
+    // Also re-fit on window resize.
+    window.addEventListener('resize', fitEffect);
+    return () => window.removeEventListener('resize', fitEffect);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blobUrl]);
 
   const overlayBoxes = useMemo(() => {
@@ -154,13 +166,27 @@ export function ResultViewer({
         className="relative flex flex-1 items-center justify-center overflow-auto bg-muted/20 p-4"
         style={{ minHeight: 280 }}
       >
-        {renderSize && (
+        {/* Off-screen probe: always render the <img> so its naturalWidth /
+            naturalHeight are available synchronously after load. Wrapped
+            in absolute positioning so it doesn't take layout space. */}
+        {blobUrl && (
+          <img
+            ref={imgRef}
+            src={blobUrl}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="pointer-events-none absolute h-0 w-0 opacity-0"
+            style={{ position: 'absolute', left: '-99999px', top: '-99999px' }}
+          />
+        )}
+
+        {renderSize && blobUrl && (
           <div
             className="relative"
             style={{ width: renderSize.w * zoom, height: renderSize.h * zoom }}
           >
             <img
-              ref={imgRef}
               src={blobUrl}
               alt={fileName ?? ''}
               draggable={false}

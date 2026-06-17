@@ -45,7 +45,7 @@ export default function App() {
               showOverlay={showOverlay}
               onToggleOverlay={() => setShowOverlay(!showOverlay)}
             />
-            <ResultPanel result={result} />
+            <ResultPanel result={result} fileName={fileName} />
           </div>
         )}
 

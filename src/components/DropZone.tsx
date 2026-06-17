@@ -13,17 +13,17 @@ interface DropZoneProps {
 const SAMPLES = [
   {
     name: 'Receipt (English)',
-    src: 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/receipt.png',
+    src: `${import.meta.env.BASE_URL}samples/receipt.png`.replace(/\/+/g, '/'),
     hint: 'struk belanja',
   },
   {
     name: 'Printed text',
-    src: 'https://raw.githubusercontent.com/tesseract-ocr/tesseract/main/test/testing/phototest.tif',
+    src: `${import.meta.env.BASE_URL}samples/printed-text.png`.replace(/\/+/g, '/'),
     hint: 'latin print',
   },
   {
     name: 'Handwriting',
-    src: 'https://huggingface.co/datasets/Sayali9141/handwritten_text_recognition/resolve/main/1.png',
+    src: `${import.meta.env.BASE_URL}samples/handwriting.png`.replace(/\/+/g, '/'),
     hint: 'tulisan tangan',
   },
 ];

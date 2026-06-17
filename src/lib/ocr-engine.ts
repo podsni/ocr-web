@@ -111,12 +111,34 @@ async function loadEngine(
   const names = modelNamesForTier(tier);
   onProgress?.(`Memuat model ${names.det} + ${names.rec}...`);
 
+  // Self-host the model tarballs on the same origin instead of pulling from
+  // Baidu CDN. Some networks block `paddle-model-ecology.bj.bcebos.com`, so
+  // shipping the ~6 MB tiny tier with the app removes that dependency and
+  // makes first inference reliably work in any environment.
+  //
+  // The SDK expects an uncompressed ustar `.tar` containing
+  // `inference.onnx` + `inference.yml` (with matching model_name). That's
+  // exactly what Baidu publishes, so we just point at the same files on
+  // our own origin. Larger tiers (small/medium) still go through the CDN
+  // because they're too big to ship with the app.
+  const modelBaseUrl = `${import.meta.env.BASE_URL}models/`.replace(/\/+/g, '/');
+  const detModelAsset =
+    tier === 'tiny'
+      ? { url: `${modelBaseUrl}PP-OCRv6_tiny_det.tar` }
+      : undefined;
+  const recModelAsset =
+    tier === 'tiny'
+      ? { url: `${modelBaseUrl}PP-OCRv6_tiny_rec.tar` }
+      : undefined;
+
   const ocr = await PaddleOCR.create({
     textDetectionModelName: names.det,
     textRecognitionModelName: names.rec,
+    ...(detModelAsset ? { textDetectionModelAsset: detModelAsset } : {}),
+    ...(recModelAsset ? { textRecognitionModelAsset: recModelAsset } : {}),
     // Run on the main thread instead of a Web Worker. PaddleOCR's pre-built
     // worker-entry bundles the WebGPU+JSEP variant of ONNX Runtime, which
-    // requires `ort-wasm-simd-threaded.jsep.wasm` (25 MB) — over Cloudflare
+    // requires `ort-wasm-simd-threaded.jsep.wasm` (25 MB) - over Cloudflare
     // Pages' 25 MB per-file upload limit. The main-thread bundle uses the
     // smaller plain-threaded WASM (12 MB) which fits comfortably.
     worker: false,
