@@ -1,0 +1,9 @@
+/*
+  Cross-Origin headers for ONNX Runtime Web:
+  - COOP: same-origin           — required for SharedArrayBuffer
+  - COEP: require-corp           — required for cross-origin isolation
+  These let WASM run with multiple threads (faster inference).
+*/
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Resource-Policy: same-origin
