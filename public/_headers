@@ -1,9 +1,13 @@
 /*
   Cross-Origin headers for ONNX Runtime Web:
-  - COOP: same-origin           — required for SharedArrayBuffer
-  - COEP: require-corp           — required for cross-origin isolation
-  These let WASM run with multiple threads (faster inference).
+  - COOP: same-origin     — required for SharedArrayBuffer (used by WASM threading)
+  - COEP: credentialless  — allows the PaddleOCR SDK to load cross-origin
+                            subresources (e.g. JS workers) without explicit
+                            Cross-Origin-Resource-Policy. Falls back to
+                            `require-corp` when the host serves every
+                            subresource with its own CORP header.
+  - CORP: same-origin     — keeps responses from being embedded by other sites.
 */
 Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Embedder-Policy: credentialless
 Cross-Origin-Resource-Policy: same-origin
